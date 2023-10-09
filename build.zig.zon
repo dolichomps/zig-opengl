@@ -1,0 +1,15 @@
+.{
+    // the name of your project
+    .name = "learning-opengl",
+    // the version of your project
+    .version = "0.0.1",
+
+    // the actual packages you need as dependencies of your project
+    .dependencies = .{
+        // the name of the package
+        .mach_glfw = .{
+            .url = "https://pkg.machengine.org/mach-glfw/076b386.tar.gz",
+            .hash = "1220cafbb90ea86d92c07f779e8106e6f5c3d8ab4cc68ddc8d3f80bd4b6079064135",
+        },
+    },
+}

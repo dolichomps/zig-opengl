@@ -5,20 +5,27 @@ const gl = @import("gl");
 const SCR_WIDTH: u32 = 800;
 const SCR_HEIGHT: u32 = 600;
 
-const vertexShaderSource: [:0]const u8 =
+const vertex_shader_source: [:0]const u8 =
     \\#version 410 core
     \\layout (location = 0) in vec3 aPos;
+    \\layout (location = 1) in vec3 aColor;
+    \\
+    \\out vec3 ourColor;
+    \\
     \\void main()
     \\{
-    \\  gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+    \\  gl_Position = vec4(aPos, 1.0);
+    \\  ourColor = aColor;
     \\}
 ;
-const fragmentShaderSource: [:0]const u8 =
+const fragment_shader_source: [:0]const u8 =
     \\#version 410 core
     \\out vec4 FragColor;
+    \\in vec3 ourColor;
+    \\
     \\void main()
     \\{
-    \\  FragColor = vec4(0.337f, 0.796f, 0.988f, 1.0f);
+    \\  FragColor = vec4(ourColor, 1.0);
     \\}
 ;
 
@@ -50,55 +57,54 @@ pub fn main() !void {
 
     //build and compile the shader program
     //compile vertex shader
-    var vertexShader = gl.createShader(gl.VERTEX_SHADER);
-    gl.shaderSource(vertexShader, 1, &vertexShaderSource.ptr, null);
-    gl.compileShader(vertexShader);
+    var vertex_shader = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vertex_shader, 1, &vertex_shader_source.ptr, null);
+    gl.compileShader(vertex_shader);
     //check vertex shader compilation errors
     var success: c_int = undefined;
     var infoLog: [512]u8 = undefined;
-    gl.getShaderiv(vertexShader, gl.COMPILE_STATUS, &success);
+    gl.getShaderiv(vertex_shader, gl.COMPILE_STATUS, &success);
     if (success == 0) {
-        gl.getShaderInfoLog(vertexShader, 512, null, &infoLog);
+        gl.getShaderInfoLog(vertex_shader, 512, null, &infoLog);
         std.log.err("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n{s}\n", .{infoLog});
     }
     //compile fragment shader
-    var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-    gl.shaderSource(fragmentShader, 1, &fragmentShaderSource.ptr, null);
-    gl.compileShader(fragmentShader);
+    var fragment_shader = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fragment_shader, 1, &fragment_shader_source.ptr, null);
+    gl.compileShader(fragment_shader);
     //check fragment shader compilation errors
-    gl.getShaderiv(fragmentShader, gl.COMPILE_STATUS, &success);
+    gl.getShaderiv(fragment_shader, gl.COMPILE_STATUS, &success);
     if (success == 0) {
-        gl.getShaderInfoLog(fragmentShader, 512, null, &infoLog);
+        gl.getShaderInfoLog(fragment_shader, 512, null, &infoLog);
         std.log.err("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n{s}\n", .{infoLog});
     }
     //create shader program
-    var shaderProgram = gl.createProgram();
-    defer gl.deleteProgram(shaderProgram);
+    var shader_program = gl.createProgram();
+    defer gl.deleteProgram(shader_program);
     //attach shaders to shader program
-    gl.attachShader(shaderProgram, vertexShader);
-    gl.attachShader(shaderProgram, fragmentShader);
+    gl.attachShader(shader_program, vertex_shader);
+    gl.attachShader(shader_program, fragment_shader);
     //link the shaders
-    gl.linkProgram(shaderProgram);
+    gl.linkProgram(shader_program);
     //check for shader link errors
-    gl.getProgramiv(shaderProgram, gl.LINK_STATUS, &success);
+    gl.getProgramiv(shader_program, gl.LINK_STATUS, &success);
     if (success == 0) {
-        gl.getProgramInfoLog(shaderProgram, 512, null, &infoLog);
+        gl.getProgramInfoLog(shader_program, 512, null, &infoLog);
         std.log.err("ERROR::SHADER::PROGRAM::LINKING_FAILED\n{s}\n", .{infoLog});
     }
     //delete shaders once they are linked to the program
-    gl.deleteShader(vertexShader);
-    gl.deleteShader(fragmentShader);
+    gl.deleteShader(vertex_shader);
+    gl.deleteShader(fragment_shader);
 
     //setup vertex data and buffers and configure vertex attribs
     const verts = [_]f32{
-        0.5, 0.5, 0.0, //top right
-        0.5, -0.5, 0.0, //bottom right
-        -0.5, -0.5, 0.0, //bottom left
-        -0.5, 0.5, 0.0, //top left
+        //positions      //colors
+        -0.5, -0.5, 0.0, 1.0, 1.0, 0.0, //bottom left
+        0.5, -0.5, 0.0, 0.0, 1.0, 1.0, //top
+        0.0, 0.5, 0.0, 1.0, 0.0, 1.0, //bottom right
     };
     const indices = [_]u32{
-        0, 1, 3, //first triangle
-        1, 2, 3, //second triangle
+        0, 1, 2, //first triangle
     };
 
     //create a vertex buffer object and a vertex array object
@@ -120,9 +126,13 @@ pub fn main() !void {
     //bind element buffer object
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices.len * @sizeOf(u32), &indices, gl.STATIC_DRAW);
-    //then configure vertex attributes
-    gl.vertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 3 * @sizeOf(f32), null);
+    //then configure vertex attributes, the last param sets the offset
+    //position attribute
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 6 * @sizeOf(f32), null);
     gl.enableVertexAttribArray(0);
+    //color attribute
+    gl.vertexAttribPointer(1, 3, gl.FLOAT, gl.FALSE, 6 * @sizeOf(f32), @ptrFromInt(3 * @sizeOf(f32)));
+    gl.enableVertexAttribArray(1);
 
     //we can safely unbind because 'gl.vertexAttribPointer' registered
     //VBO as the vertex attributes bound vertex buffer object
@@ -140,11 +150,18 @@ pub fn main() !void {
         gl.clearColor(0.961, 0.512, 0.957, 1);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
-        //draw the triangle
-        //all shaders will use this shader progam from here on out
-        gl.useProgram(shaderProgram);
+        //acvtivate the shader
+        gl.useProgram(shader_program);
+
+        //update uniform color
+        var time_value = glfw.getTime();
+        var blue_value = (@sin(time_value) / 2.0) + 0.5;
+        var vertex_color_location = gl.getUniformLocation(shader_program, "ourColor");
+        gl.uniform4f(vertex_color_location, 0.0, 0.0, @floatCast(blue_value), 1.0);
+
+        //render the triangle
         gl.bindVertexArray(VAO);
-        gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, null);
+        gl.drawElements(gl.TRIANGLES, 3, gl.UNSIGNED_INT, null);
 
         window.swapBuffers();
         glfw.pollEvents();

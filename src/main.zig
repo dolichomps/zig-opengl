@@ -1,33 +1,10 @@
 const std = @import("std");
 const glfw = @import("mach-glfw");
-const gl = @import("gl");
+const shader = @import("libs").shader;
+const gl = @import("libs").gl;
 
 const SCR_WIDTH: u32 = 800;
 const SCR_HEIGHT: u32 = 600;
-
-const vertex_shader_source: [:0]const u8 =
-    \\#version 410 core
-    \\layout (location = 0) in vec3 aPos;
-    \\layout (location = 1) in vec3 aColor;
-    \\
-    \\out vec3 ourColor;
-    \\
-    \\void main()
-    \\{
-    \\  gl_Position = vec4(aPos, 1.0);
-    \\  ourColor = aColor;
-    \\}
-;
-const fragment_shader_source: [:0]const u8 =
-    \\#version 410 core
-    \\out vec4 FragColor;
-    \\in vec3 ourColor;
-    \\
-    \\void main()
-    \\{
-    \\  FragColor = vec4(ourColor, 1.0);
-    \\}
-;
 
 pub fn main() !void {
     glfw.setErrorCallback(errorCallback);
@@ -36,6 +13,9 @@ pub fn main() !void {
         std.log.err("filed to initialize GLFW: {?s}", .{glfw.getErrorString()});
         std.process.exit(1);
     }
+    //terminate glfw, clearing all allocations
+    //(remeber it's defered so it runs after exiting main())
+    defer glfw.terminate();
 
     //create a glfw window
     const window = glfw.Window.create(SCR_WIDTH, SCR_HEIGHT, "Learn opengl", null, null, .{
@@ -46,55 +26,20 @@ pub fn main() !void {
         std.log.err("failde to create GLFW window: {?s}", .{glfw.getErrorString()});
         std.process.exit(1);
     };
-    //terminate glfw, clearing all allocations
-    //(remeber it's defered so it runs after exiting main())
-    defer glfw.terminate();
     glfw.makeContextCurrent(window);
 
     //load all opengl function pointers
     const proc: glfw.GLProc = undefined;
     try gl.load(proc, glGetProcAddress);
 
-    //build and compile the shader program
-    //compile vertex shader
-    var vertex_shader = gl.createShader(gl.VERTEX_SHADER);
-    gl.shaderSource(vertex_shader, 1, &vertex_shader_source.ptr, null);
-    gl.compileShader(vertex_shader);
-    //check vertex shader compilation errors
-    var success: c_int = undefined;
-    var infoLog: [512]u8 = undefined;
-    gl.getShaderiv(vertex_shader, gl.COMPILE_STATUS, &success);
-    if (success == 0) {
-        gl.getShaderInfoLog(vertex_shader, 512, null, &infoLog);
-        std.log.err("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n{s}\n", .{infoLog});
-    }
-    //compile fragment shader
-    var fragment_shader = gl.createShader(gl.FRAGMENT_SHADER);
-    gl.shaderSource(fragment_shader, 1, &fragment_shader_source.ptr, null);
-    gl.compileShader(fragment_shader);
-    //check fragment shader compilation errors
-    gl.getShaderiv(fragment_shader, gl.COMPILE_STATUS, &success);
-    if (success == 0) {
-        gl.getShaderInfoLog(fragment_shader, 512, null, &infoLog);
-        std.log.err("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n{s}\n", .{infoLog});
-    }
-    //create shader program
-    var shader_program = gl.createProgram();
-    defer gl.deleteProgram(shader_program);
-    //attach shaders to shader program
-    gl.attachShader(shader_program, vertex_shader);
-    gl.attachShader(shader_program, fragment_shader);
-    //link the shaders
-    gl.linkProgram(shader_program);
-    //check for shader link errors
-    gl.getProgramiv(shader_program, gl.LINK_STATUS, &success);
-    if (success == 0) {
-        gl.getProgramInfoLog(shader_program, 512, null, &infoLog);
-        std.log.err("ERROR::SHADER::PROGRAM::LINKING_FAILED\n{s}\n", .{infoLog});
-    }
-    //delete shaders once they are linked to the program
-    gl.deleteShader(vertex_shader);
-    gl.deleteShader(fragment_shader);
+    // create allocator for reading from files
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    var allocator = gpa.allocator();
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const arena_allocator = arena.allocator();
+
+    var shader_program = shader.create(arena_allocator, "shaders/shader.vs", "shaders/shader.fs");
 
     //setup vertex data and buffers and configure vertex attribs
     const verts = [_]f32{
@@ -151,13 +96,7 @@ pub fn main() !void {
         gl.clear(gl.COLOR_BUFFER_BIT);
 
         //acvtivate the shader
-        gl.useProgram(shader_program);
-
-        //update uniform color
-        var time_value = glfw.getTime();
-        var blue_value = (@sin(time_value) / 2.0) + 0.5;
-        var vertex_color_location = gl.getUniformLocation(shader_program, "ourColor");
-        gl.uniform4f(vertex_color_location, 0.0, 0.0, @floatCast(blue_value), 1.0);
+        shader_program.use();
 
         //render the triangle
         gl.bindVertexArray(VAO);

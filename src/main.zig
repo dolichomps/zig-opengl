@@ -1,7 +1,7 @@
 const std = @import("std");
 const glfw = @import("mach-glfw");
-const shader = @import("libs").shader;
-const gl = @import("libs").gl;
+const gl = @import("opengl/gl41.zig");
+const shader = @import("shader.zig");
 
 const SCR_WIDTH: u32 = 800;
 const SCR_HEIGHT: u32 = 600;
@@ -10,7 +10,7 @@ pub fn main() !void {
     glfw.setErrorCallback(errorCallback);
     //initialize glfw
     if (!glfw.init(.{})) {
-        std.log.err("filed to initialize GLFW: {?s}", .{glfw.getErrorString()});
+        std.log.err("failed to initialize GLFW: {?s}", .{glfw.getErrorString()});
         std.process.exit(1);
     }
     //terminate glfw, clearing all allocations
@@ -39,7 +39,7 @@ pub fn main() !void {
     defer arena.deinit();
     const arena_allocator = arena.allocator();
 
-    var shader_program = shader.create(arena_allocator, "shaders/shader.vs", "shaders/shader.fs");
+    var shader_program = shader.create(arena_allocator, "src/shaders/shader.vs", "src/shaders/shader.fs");
 
     //setup vertex data and buffers and configure vertex attribs
     const verts = [_]f32{

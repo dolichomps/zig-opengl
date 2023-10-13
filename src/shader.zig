@@ -1,5 +1,5 @@
 const std = @import("std");
-const gl = @import("libs.zig").gl;
+const gl = @import("opengl/gl41.zig");
 const Shader = @This();
 
 // program id

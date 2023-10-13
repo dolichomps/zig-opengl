@@ -39,7 +39,11 @@ pub fn main() !void {
     defer arena.deinit();
     const arena_allocator = arena.allocator();
 
-    var shader_program = shader.create(arena_allocator, "src/shaders/shader.vs", "src/shaders/shader.fs");
+    var shader_program = shader.create(
+        arena_allocator,
+        "src/shaders/shader.vert",
+        "src/shaders/shader.frag",
+    );
 
     //setup vertex data and buffers and configure vertex attribs
     const verts = [_]f32{
@@ -97,6 +101,10 @@ pub fn main() !void {
 
         //acvtivate the shader
         shader_program.use();
+
+        const time = glfw.getTime();
+        const offset = @sin(time * 2) / 2;
+        shader_program.setFloat("xOffset", @floatCast(offset));
 
         //render the triangle
         gl.bindVertexArray(VAO);

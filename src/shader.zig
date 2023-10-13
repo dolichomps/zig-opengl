@@ -72,5 +72,5 @@ pub fn setInt(self: Shader, name: [:0]const u8, value: u32) void {
 }
 
 pub fn setFloat(self: Shader, name: [:0]const u8, value: f32) void {
-    gl.uniform1i(gl.getUniformLocation(self.id, name), @floatCast(value));
+    gl.uniform1f(gl.getUniformLocation(self.id, name), value);
 }

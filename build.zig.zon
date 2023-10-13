@@ -3,6 +3,7 @@
     .name = "learning-opengl",
     // the version of your project
     .version = "0.0.1",
+    .paths = .{"."},
 
     // the actual packages you need as dependencies of your project
     .dependencies = .{

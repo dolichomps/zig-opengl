@@ -1,4 +1,5 @@
 const std = @import("std");
+const zstbi = @import("libs/zstbi/build.zig");
 
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
@@ -31,6 +32,10 @@ pub fn build(b: *std.Build) void {
     });
     exe.addModule("mach-glfw", glfw_dep.module("mach-glfw"));
     @import("mach_glfw").link(glfw_dep.builder, exe);
+
+    const zstbi_pkg = zstbi.package(b, target, optimize, .{});
+
+    zstbi_pkg.link(exe);
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
